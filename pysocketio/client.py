@@ -1,3 +1,5 @@
+import pysocketio_parser as parser
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -7,8 +9,9 @@ class Client(object):
     def __init__(self, engine, socket):
         self.engine = engine
         self.socket = socket
-        #
-        #  TODO encoder, decoder
+
+        self.encoder = parser.Encoder()
+        self.decoder = parser.Decoder()
 
         self.sid = socket.sid
         # TODO request
@@ -23,7 +26,7 @@ class Client(object):
         self.socket.on('data', self.on_data)\
                    .on('close', self.on_close)
 
-        # TODO decoder.on('decoded',...)
+        self.decoder.on('decoded', self.on_decoded)
 
     def connect(self, name):
         log.debug('connecting to namespace "%s"', name)
@@ -34,7 +37,6 @@ class Client(object):
             self.connect_buffer.append(name)
             return
 
-        @nsp.add(self)
         def on_connected(socket):
             self.sockets.append(socket)
             self.nsps[nsp.name] = socket
@@ -46,6 +48,8 @@ class Client(object):
 
                 self.connect_buffer = None
 
+        nsp.add(self, on_connected)
+
     def disconnect(self):
         pass
 
@@ -55,14 +59,45 @@ class Client(object):
     def close(self):
         pass
 
-    def send(self, packet, encoded=False, volatile=False):
-        pass
+    def packet(self, packet, encoded=False, volatile=False):
+        if self.socket.ready_state != 'open':
+            log.debug('ignoring packet write %s, transport not ready', packet)
+            return
+
+        def write(encoded_packets):
+            if volatile and not self.socket.transport.writable:
+                return
+
+            # Write each packet to socket
+            for ep in encoded_packets:
+                self.socket.write(ep)
+
+        log.debug('writing packet %s', packet)
+
+        # Packet(s) already encoded, write them to socket
+        if encoded:
+            return write(packet)
+
+        # Encode packets, write them to socket
+        self.encoder.encode(packet, write)
 
     def on_data(self, data):
-        pass
+        self.decoder.add(data)
 
     def on_decoded(self, packet):
-        pass
+        p_type = packet.get('type')
+        p_nsp = packet.get('nsp')
+
+        if p_type == parser.CONNECT:
+            return self.connect(p_nsp)
+
+        socket = self.nsps.get(p_nsp)
+
+        if not socket:
+            log.debug('no socket for namespace %s', p_nsp)
+            return
+
+        return socket.on_packet(packet)
 
     def on_close(self, reason, description=None):
         pass

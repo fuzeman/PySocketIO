@@ -25,6 +25,7 @@ class Socket(Emitter):
         self.sid = client.sid
 
         self.rooms = []
+        self.acks = {}
 
         self.connected = True
         self.disconnected = False
@@ -223,7 +224,28 @@ class Socket(Emitter):
         return ack_callback
 
     def on_ack(self, packet):
-        pass
+        """Called upon ack packet.
+
+        :param packet: Packet
+        :type packet: dict
+        """
+        p_id = packet.get('id')
+        p_data = packet.get('data')
+
+        ack_func = self.acks.get(p_id)
+
+        if ack_func is None:
+            log.debug('bad ack %s', p_id)
+            return
+
+        log.debug('calling ack %s with %s', p_id, p_data)
+
+        try:
+            ack_func(*p_data)
+        except Exception, ex:
+            log.warn('error while calling ack callback: %s', ex)
+
+        del self.acks[p_id]
 
     def on_disconnect(self):
         """Called upon client disconnect packet."""

@@ -1,4 +1,5 @@
 from pysocketio.socket import Socket
+import pysocketio_parser as parser
 
 from pyemitter import Emitter
 import logging
@@ -7,6 +8,8 @@ log = logging.getLogger(__name__)
 
 
 class Namespace(Emitter):
+    _emit = Emitter.emit
+
     def __init__(self, engine, name):
         """Namespace constructor.
 
@@ -22,14 +25,39 @@ class Namespace(Emitter):
         self.sockets = []
         self.connected = {}
 
+        self.rooms = []
+        self.flags = {}
+
         self.adapter = self.engine.adapter()(self)
+
+    @property
+    def broadcast(self):
+        self.flags['broadcast'] = True
+        return self
+
+    @property
+    def volatile(self):
+        self.flags['volatile'] = True
+        return self
+
+    def use(self, func):
+        """Sets up namespace middleware."""
+        pass
 
     def run(self, socket):
         """Executes the middleware for an incoming client."""
         return None
 
     def to(self, name):
-        raise NotImplementedError()
+        """Targets a room when emitting.
+
+        :param name: Room name
+        :type name: str
+        """
+        if name not in self.rooms:
+            self.rooms.append(name)
+
+        return self
 
     def add(self, client, on_connected=None):
         """Adds a new client.
@@ -68,8 +96,8 @@ class Namespace(Emitter):
             on_connected(socket)
 
         # fire user-set events
-        self.emit('connect', socket)
-        self.emit('connection', socket)
+        self._emit('connect', socket)
+        self._emit('connection', socket)
 
         return socket
 
@@ -85,3 +113,26 @@ class Namespace(Emitter):
 
         self.sockets.remove(socket)
 
+    def emit(self, *args):
+        """Emits to all clients."""
+        packet = {
+            'type': parser.EVENT,  # TODO BINARY_EVENT
+            'data': args
+        }
+
+        # TODO ACK callback check
+
+        self.adapter.broadcast(packet, {
+            'rooms': self.rooms,
+            'flags': self.flags
+        })
+
+        # Reset options
+        self.rooms = []
+        self.flags = {}
+
+        return self
+
+    def send(self, *args):
+        """Sends a `message` event to all clients."""
+        return self.emit('message', *args)

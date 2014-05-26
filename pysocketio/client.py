@@ -65,13 +65,30 @@ class Client(object):
         nsp.add(self, on_connected)
 
     def disconnect(self):
-        pass
+        """Disconnects from all namespaces and closes transport."""
+        while self.sockets:
+            self.sockets.pop(0).disconnect()
 
-    def remove(self):
-        pass
+        self.close()
+
+    def remove(self, socket):
+        """Removes a socket. Called by each `Socket`."""
+        if socket not in self.sockets:
+            log.debug('ignoring remove for %s', socket.sid)
+            return
+
+        self.sockets.remove(socket)
+        del self.nsps[socket.nsp.name]
 
     def close(self):
-        pass
+        """Closes the underlying connection."""
+        if self.socket.ready_state != 'open':
+            return
+
+        log.debug('forcing transport close')
+
+        self.socket.close()
+        self.on_close('forced server close')
 
     def packet(self, packet, encoded=False, volatile=False):
         """Writes a packet to the transport.
@@ -135,10 +152,28 @@ class Client(object):
         return socket.on_packet(packet)
 
     def on_close(self, reason, description=None):
-        pass
+        """Called upon transport close.
+
+        :param reason: Close reason
+        :type reason: str
+
+        :param description: Close description
+        :type description: str
+        """
+        log.debug('client close with reason %s', reason)
+
+        # ignore a potential subsequent `close` event
+        self.destroy()
+
+        # `nsps` and `sockets` are cleaned up seamlessly
+        for socket in self.sockets:
+            socket.on_close(reason)
+
+        # clean up decoder
+        self.decoder.destroy()
 
     def destroy(self):
         self.socket.off('data')\
                    .off('close')
 
-        # TODO self.decoder.off('decoded')
+        self.decoder.off('decoded')

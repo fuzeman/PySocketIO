@@ -73,3 +73,15 @@ class Namespace(Emitter):
 
         return socket
 
+    def remove(self, socket):
+        """Removes a client. Called by each `Socket`.
+
+        :param socket: Socket
+        :type socket: pysocketio.socket.Socket
+        """
+        if socket not in self.sockets:
+            log.debug('ignoring remove for %s', socket.sid)
+            return
+
+        self.sockets.remove(socket)
+

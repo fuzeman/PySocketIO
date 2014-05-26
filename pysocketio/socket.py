@@ -25,9 +25,23 @@ class Socket(Emitter):
         self.sid = client.sid
 
         self.rooms = []
+
+        self.connected = True
+        self.disconnected = False
         self.flags = {}
 
+    @property
+    def broadcast(self):
+        self.flags['broadcast'] = True
+        return self
+
+    @property
+    def volatile(self):
+        self.flags['volatile'] = True
+        return self
+
     def emit(self, *args):
+        """Emits to this client."""
         packet = {
             'type': parser.EVENT,  # TODO BINARY_EVENT
             'data': args
@@ -42,23 +56,13 @@ class Socket(Emitter):
                 'flags': self.flags
             })
         else:
-            # dispatch packet
+            # Dispatch packet
             self.packet(packet)
 
-        # reset flags
+        # Reset options
         self.rooms = []
         self.flags = {}
 
-        return self
-
-    @property
-    def broadcast(self):
-        self.flags['broadcast'] = True
-        return self
-
-    @property
-    def volatile(self):
-        self.flags['volatile'] = True
         return self
 
     def to(self, name):
@@ -73,6 +77,7 @@ class Socket(Emitter):
         return self
 
     def send(self, *args):
+        """Sends a `message` event."""
         return self.emit('message', *args)
 
     def packet(self, packet, encoded=False, volatile=False):
@@ -119,11 +124,32 @@ class Socket(Emitter):
 
         self.adapter.add(self.sid, room, on_added)
 
-    def leave(self, room):
-        pass
+    def leave(self, room, callback):
+        """Leaves a room.
+
+        :param room: room name
+        :type room: str
+
+        :param callback: Callback function
+        :type callback: function
+        """
+        log.debug('leave room %s', room)
+
+        def on_removed(error=None):
+            if error and callback:
+                callback(error)
+
+            log.debug('left room %s', room)
+            self.rooms.remove(room)
+
+            if callback:
+                callback()
+
+        self.adapter.remove(self.sid, room, on_removed)
 
     def leave_all(self):
-        pass
+        """Leave all rooms."""
+        self.adapter.remove_all(self.sid)
 
     def on_connect(self):
         """Called by `Namespace` upon successful middleware
@@ -196,18 +222,60 @@ class Socket(Emitter):
 
         return ack_callback
 
-
     def on_ack(self, packet):
         pass
 
     def on_disconnect(self):
-        pass
+        """Called upon client disconnect packet."""
+        log.debug('got disconnect packet')
+        self.on_close('client namespace disconnect')
 
-    def on_close(self):
-        pass
+    def on_close(self, reason=None):
+        """Called upon closing. Called by `Client`.
+
+        :param reason: Close reason
+        :type reason: str
+        """
+        if not self.connected:
+            return
+
+        log.debug('closing socket - reason %s', reason)
+
+        self.leave_all()
+
+        self.nsp.remove(self)
+        self.client.remove(self)
+
+        self.connected = False
+        self.disconnected = True
+
+        del self.nsp.connected[self.sid]
+        self.emit('disconnect', reason)
 
     def error(self, data):
-        pass
+        """Produces an `error` packet.
+
+        :param data: Error detail
+        :type data: object
+        """
+        self.packet({
+            'type': parser.ERROR,
+            'data': data
+        })
 
     def disconnect(self, close=False):
-        pass
+        """Disconnects this client.
+
+        :param close: if `true`, closes the underlying connnection
+        :type close: bool
+        """
+        if not self.connected:
+            return
+
+        if close:
+            self.client.disconnect()
+        else:
+            self.packet({'type': parser.DISCONNECT})
+            self.on_close('server namespace disconnect')
+
+        return self

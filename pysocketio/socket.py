@@ -10,6 +10,14 @@ class Socket(Emitter):
     _emit = Emitter.emit
 
     def __init__(self, nsp, client):
+        """Interface to a `Client` for a given `Namespace`.
+
+        :param nsp: Namespace
+        :type nsp: pysocketio.namespace.Namespace
+
+        :param client: Client
+        :type client: pysocketio.client.Client
+        """
         self.nsp = nsp
         self.client = client
         self.adapter = nsp.adapter
@@ -54,6 +62,11 @@ class Socket(Emitter):
         return self
 
     def to(self, name):
+        """Targets a room when broadcasting.
+
+        :param name: Room name
+        :type name: str
+        """
         if name not in self.rooms:
             self.rooms.append(name)
 
@@ -63,6 +76,17 @@ class Socket(Emitter):
         return self.emit('message', *args)
 
     def packet(self, packet, encoded=False, volatile=False):
+        """Writes a packet.
+
+        :param packet: Packet
+        :type packet: dict
+
+        :param encoded: Flag indicating the packet has already been encoded
+        :type encoded: bool
+
+        :param volatile: Flag indicating the packet is volatile
+        :type volatile: bool
+        """
         if not encoded:
             packet['nsp'] = self.nsp.name
 
@@ -73,6 +97,14 @@ class Socket(Emitter):
         self.client.packet(packet, encoded, volatile)
 
     def join(self, room, callback=None):
+        """Joins a room.
+
+        :param room: room name
+        :type room: str
+
+        :param callback: Callback function
+        :type callback: function
+        """
         log.debug('joining room %s', room)
 
         def on_added(error=None):
@@ -85,7 +117,6 @@ class Socket(Emitter):
             if callback:
                 callback()
 
-
         self.adapter.add(self.sid, room, on_added)
 
     def leave(self, room):
@@ -95,6 +126,8 @@ class Socket(Emitter):
         pass
 
     def on_connect(self):
+        """Called by `Namespace` upon successful middleware
+           execution (ie: authorization)."""
         log.debug('socket connected - writing packet')
 
         self.join(self.sid)
@@ -103,6 +136,11 @@ class Socket(Emitter):
         self.nsp.connected[self.sid] = self
 
     def on_packet(self, packet):
+        """Called with each packet. Called by `Client`.
+
+        :param packet: Packet
+        :type packet: dict
+        """
         p_type = packet.get('type')
 
         if p_type == parser.EVENT:
@@ -121,6 +159,11 @@ class Socket(Emitter):
             return self._emit('error', packet.get('data'))
 
     def on_event(self, packet):
+        """Called upon event packet.
+
+        :param packet: Packet
+        :type packet: dict
+        """
         args = packet.get('data') or []
         log.debug('emitting event %s', args)
 
@@ -131,6 +174,11 @@ class Socket(Emitter):
         self._emit(*args)
 
     def ack(self, id):
+        """Produces an ack callback to emit with an event.
+
+        :param id: Packet ID
+        :type id: str
+        """
         sent = False
 
         def ack_callback(*args):

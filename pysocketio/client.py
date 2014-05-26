@@ -7,6 +7,14 @@ log = logging.getLogger(__name__)
 
 class Client(object):
     def __init__(self, engine, socket):
+        """Client constructor.
+
+        :param engine: Engine
+        :type engine: pysocketio.engine.Engine
+
+        :param socket: EIO Socket
+        :type socket: pyengineio.socket.Socket
+        """
         self.engine = engine
         self.socket = socket
 
@@ -23,12 +31,18 @@ class Client(object):
         self.connect_buffer = []
 
     def setup(self):
+        """Sets up event listeners."""
         self.socket.on('data', self.on_data)\
                    .on('close', self.on_close)
 
         self.decoder.on('decoded', self.on_decoded)
 
     def connect(self, name):
+        """Connects a client to a namespace.
+
+        :param name: Namespace name
+        :type name: str
+        """
         log.debug('connecting to namespace "%s"', name)
 
         nsp = self.engine.of(name)
@@ -60,6 +74,17 @@ class Client(object):
         pass
 
     def packet(self, packet, encoded=False, volatile=False):
+        """Writes a packet to the transport.
+
+        :param packet: Packet
+        :type packet: dict
+
+        :param encoded: Flag indicating the packet has already been encoded
+        :type encoded: bool
+
+        :param volatile: Flag indicating the packet is volatile
+        :type volatile: bool
+        """
         if self.socket.ready_state != 'open':
             log.debug('ignoring packet write %s, transport not ready', packet)
             return
@@ -82,9 +107,19 @@ class Client(object):
         self.encoder.encode(packet, write)
 
     def on_data(self, data):
+        """Called with incoming transport data.
+
+        :param data: Data
+        :type data: str
+        """
         self.decoder.add(data)
 
     def on_decoded(self, packet):
+        """Called when the parser fully decodes a packet.
+
+        :param packet: Decoded packet
+        :type packet: dict
+        """
         p_type = packet.get('type')
         p_nsp = packet.get('nsp')
 

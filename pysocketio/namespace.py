@@ -8,6 +8,14 @@ log = logging.getLogger(__name__)
 
 class Namespace(Emitter):
     def __init__(self, engine, name):
+        """Namespace constructor.
+
+        :param engine: Engine
+        :type engine: pysocketio.engine.Engine
+
+        :param name: Namespace name
+        :type name: str
+        """
         self.engine = engine
         self.name = name
 
@@ -17,12 +25,21 @@ class Namespace(Emitter):
         self.adapter = self.engine.adapter()(self)
 
     def run(self, socket):
+        """Executes the middleware for an incoming client."""
         return None
 
     def to(self, name):
         raise NotImplementedError()
 
     def add(self, client, on_connected=None):
+        """Adds a new client.
+
+        :param client: Client
+        :type client: pysocketio.client.Client
+
+        :param on_connected: Connected callback
+        :type on_connected: function
+        """
         log.debug('adding socket to nsp "%s"', self.name)
 
         socket = Socket(self, client)

@@ -40,6 +40,11 @@ class Engine(Emitter):
             .on('connection', self.on_connection)
 
     def adapter(self, adapter=None):
+        """Sets the adapter for rooms.
+
+        :param adapter: Replacement adapter to use
+        :type adapter: class of `pysocketio_adapter.Adapter`
+        """
         if not adapter:
             return self._adapter
 
@@ -51,12 +56,22 @@ class Engine(Emitter):
         return self
 
     def on_connection(self, socket):
+        """Called with each incoming transport connection.
+
+        :param socket: EIO Socket
+        :type socket: pyengineio.socket.Socket
+        """
         log.debug('incoming connection with sid "%s"', socket.sid)
 
         client = Client(self, socket)
         client.connect('/')
 
     def of(self, name):
+        """Looks up a namespace.
+
+        :param name: Namespace name
+        :type name: str
+        """
         if not self.nsps.get(name):
             log.debug('initializing namespace "%s"', name)
             self.nsps[name] = Namespace(self, name)

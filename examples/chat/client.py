@@ -13,6 +13,13 @@ def connected():
 
     socket.emit('login', username)
 
+@socket.on('message')
+def on_message(data):
+    print '[%s] %s' % (data.get('username'), data.get('message'))
+
 
 while True:
-    raw_input()
+    message = raw_input('>>> ')
+
+    print '[%s] %s' % (username, message)
+    socket.emit('message', message)

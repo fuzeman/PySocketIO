@@ -23,6 +23,13 @@ def on_connection(socket):
 
     logged_on = False
 
+    @socket.on('message')
+    def on_message(message):
+        socket.broadcast.emit('message', {
+            'username': socket.username,
+            'message': message
+        })
+
     @socket.on('login')
     def on_login(username):
         print 'login "%s"' % username
@@ -39,6 +46,21 @@ def on_connection(socket):
 
         socket.broadcast.emit('user.joined', {
             'username': username,
+            'active': len(users)
+        })
+
+    @socket.on('disconnect')
+    def on_disconnect():
+        if not hasattr(socket, 'username'):
+            return
+
+        if socket.username not in users:
+            return
+
+        del users[socket.username]
+
+        socket.broadcast.emit('user.left', {
+            'username': socket.username,
             'active': len(users)
         })
 

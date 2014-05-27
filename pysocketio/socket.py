@@ -29,16 +29,18 @@ class Socket(Emitter):
 
         self.connected = True
         self.disconnected = False
-        self.flags = {}
+
+        self.emit_rooms = []
+        self.emit_flags = {}
 
     @property
     def broadcast(self):
-        self.flags['broadcast'] = True
+        self.emit_flags['broadcast'] = True
         return self
 
     @property
     def volatile(self):
-        self.flags['volatile'] = True
+        self.emit_flags['volatile'] = True
         return self
 
     def emit(self, *args):
@@ -50,19 +52,19 @@ class Socket(Emitter):
 
         # TODO ACK
 
-        if self.rooms or self.flags.get('broadcast'):
+        if self.emit_rooms or self.emit_flags.get('broadcast'):
             self.adapter.broadcast(packet, {
                 'except': [self.sid],
-                'rooms': self.rooms,
-                'flags': self.flags
+                'rooms': self.emit_rooms,
+                'flags': self.emit_flags
             })
         else:
             # Dispatch packet
             self.packet(packet)
 
         # Reset options
-        self.rooms = []
-        self.flags = {}
+        self.emit_rooms = []
+        self.emit_flags = {}
 
         return self
 
@@ -72,8 +74,8 @@ class Socket(Emitter):
         :param name: Room name
         :type name: str
         """
-        if name not in self.rooms:
-            self.rooms.append(name)
+        if name not in self.emit_rooms:
+            self.emit_rooms.append(name)
 
         return self
 
@@ -97,7 +99,7 @@ class Socket(Emitter):
             packet['nsp'] = self.nsp.name
 
         # Volatile namespace?
-        volatile = volatile or (self.flags and self.flags.get('volatile'))
+        volatile = volatile or (self.emit_flags and self.emit_flags.get('volatile'))
 
         # Send packet to client
         self.client.packet(packet, encoded, volatile)

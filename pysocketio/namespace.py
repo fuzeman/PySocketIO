@@ -25,19 +25,19 @@ class Namespace(Emitter):
         self.sockets = []
         self.connected = {}
 
-        self.rooms = []
-        self.flags = {}
-
         self.adapter = self.engine.adapter()(self)
+
+        self.emit_rooms = []
+        self.emit_flags = {}
 
     @property
     def broadcast(self):
-        self.flags['broadcast'] = True
+        self.emit_flags['broadcast'] = True
         return self
 
     @property
     def volatile(self):
-        self.flags['volatile'] = True
+        self.emit_flags['volatile'] = True
         return self
 
     def use(self, func):
@@ -54,8 +54,8 @@ class Namespace(Emitter):
         :param name: Room name
         :type name: str
         """
-        if name not in self.rooms:
-            self.rooms.append(name)
+        if name not in self.emit_rooms:
+            self.emit_rooms.append(name)
 
         return self
 
@@ -123,13 +123,13 @@ class Namespace(Emitter):
         # TODO ACK callback check
 
         self.adapter.broadcast(packet, {
-            'rooms': self.rooms,
-            'flags': self.flags
+            'rooms': self.emit_rooms,
+            'flags': self.emit_flags
         })
 
         # Reset options
-        self.rooms = []
-        self.flags = {}
+        self.emit_rooms = []
+        self.emit_flags = {}
 
         return self
 

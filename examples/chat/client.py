@@ -7,11 +7,13 @@ username = raw_input('Username: ')
 
 socket = io.connect('http://localhost:5000')
 
+
 @socket.on('connect')
 def connected():
     print "connected"
 
     socket.emit('login', username)
+
 
 @socket.on('message')
 def on_message(data):

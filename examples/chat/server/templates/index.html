@@ -1,0 +1,112 @@
+<html>
+    <head>
+        <title>PySocketIO - examples/chat</title>
+
+        <style type="text/css">
+            #messages {
+                width: 300px;
+                height: 300px;
+
+                background-color: #eeeeee;
+                border: 1px solid #dddddd;
+                list-style-type: none;
+
+                padding: 0;
+                margin: 0;
+            }
+
+            #messages .message {
+                border-bottom: 1px solid #E3E3E3;
+            }
+
+            #messages .message .username {
+                float: left;
+                width: 60px;
+
+                background-color: #E3E3E3;
+                text-align: right;
+
+                padding-right: 3px;
+            }
+
+            #messages .message .content {
+                background-color: #ffffff;
+
+                padding-left: 6px;
+                margin-left: 60px;
+            }
+
+            #new-message {
+                width: 300px;
+
+                margin-top: 8px;
+            }
+
+            #new-message .content {
+                width: 246px;
+            }
+        </style>
+    </head>
+    <body>
+        <ul id="messages"></ul>
+
+        <div id="new-message">
+            <input class="content" type="text"/>
+            <button class="send" type="submit">Send</button>
+        </div>
+
+        <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+        <script src="../static/socket.io.js"></script>
+
+        <script>
+            var $nmContent = $('#new-message .content'),
+                $nmSend = $('#new-message .send'),
+                socket = io('http://localhost'),
+                username = 'one';
+
+            socket.on('connect', function(){
+                socket.emit('login', username);
+            });
+
+            socket.on('message', function(data) {
+                append_message(data);
+            });
+
+            $nmSend.click(function(ev) {
+                ev.preventDefault();
+                send_message();
+            });
+
+            $nmContent.keydown(function(ev) {
+                if(ev.which == 13) {
+                    send_message();
+                }
+            });
+
+            function send_message() {
+                var content = $nmContent.val();
+
+                // send message
+                socket.emit('message', content);
+
+                // append to messages list
+                append_message({
+                    'username': username,
+                    'message': content
+                });
+
+                // clear message textbox
+                $nmContent.val('');
+            }
+
+            function append_message(data) {
+                var element = $('<li class="message"><div class="username"></div><div class="content"></div></li>');
+
+                $('.username', element).text(data.username);
+                $('.content', element).text(data.message);
+
+                $('#messages').append(element);
+            }
+        </script>
+    </body>
+</html>

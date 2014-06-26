@@ -20,6 +20,7 @@ class Socket(Emitter):
         """
         self.nsp = nsp
         self.client = client
+        self.request = self.client.request
         self.adapter = nsp.adapter
 
         self.sid = client.sid
@@ -30,17 +31,22 @@ class Socket(Emitter):
         self.connected = True
         self.disconnected = False
 
-        self.emit_rooms = []
-        self.emit_flags = {}
+        self._rooms = []
+        self.flags = {}
 
     @property
-    def broadcast(self):
-        self.emit_flags['broadcast'] = True
+    def json(self):
+        self.flags['json'] = True
         return self
 
     @property
     def volatile(self):
-        self.emit_flags['volatile'] = True
+        self.flags['volatile'] = True
+        return self
+
+    @property
+    def broadcast(self):
+        self.flags['broadcast'] = True
         return self
 
     def emit(self, *args):
@@ -52,19 +58,19 @@ class Socket(Emitter):
 
         # TODO ACK
 
-        if self.emit_rooms or self.emit_flags.get('broadcast'):
+        if self._rooms or self.flags.get('broadcast'):
             self.adapter.broadcast(packet, {
                 'except': [self.sid],
-                'rooms': self.emit_rooms,
-                'flags': self.emit_flags
+                'rooms': self._rooms,
+                'flags': self.flags
             })
         else:
             # Dispatch packet
             self.packet(packet)
 
         # Reset options
-        self.emit_rooms = []
-        self.emit_flags = {}
+        self._rooms = []
+        self.flags = {}
 
         return self
 
@@ -74,8 +80,8 @@ class Socket(Emitter):
         :param name: Room name
         :type name: str
         """
-        if name not in self.emit_rooms:
-            self.emit_rooms.append(name)
+        if name not in self._rooms:
+            self._rooms.append(name)
 
         return self
 
@@ -99,7 +105,7 @@ class Socket(Emitter):
             packet['nsp'] = self.nsp.name
 
         # Volatile namespace?
-        volatile = volatile or (self.emit_flags and self.emit_flags.get('volatile'))
+        volatile = volatile or (self.flags and self.flags.get('volatile'))
 
         # Send packet to client
         self.client.packet(packet, encoded, volatile)
@@ -115,6 +121,9 @@ class Socket(Emitter):
         """
         log.debug('joining room %s', room)
 
+        if room in self.rooms:
+            return self
+
         def on_added(error=None):
             if error and callback:
                 return callback(error)
@@ -126,6 +135,7 @@ class Socket(Emitter):
                 callback()
 
         self.adapter.add(self.sid, room, on_added)
+        return self
 
     def leave(self, room, callback):
         """Leaves a room.
@@ -149,6 +159,7 @@ class Socket(Emitter):
                 callback()
 
         self.adapter.remove(self.sid, room, on_removed)
+        return self
 
     def leave_all(self):
         """Leave all rooms."""

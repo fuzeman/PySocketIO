@@ -6,23 +6,23 @@ log = logging.getLogger(__name__)
 
 
 class Client(object):
-    def __init__(self, engine, socket):
+    def __init__(self, engine, conn):
         """Client constructor.
 
         :param engine: Engine
         :type engine: pysocketio.engine.Engine
 
-        :param socket: EIO Socket
-        :type socket: pyengineio.socket.Socket
+        :param conn: EIO Socket
+        :type conn: pyengineio.socket.Socket
         """
         self.engine = engine
-        self.socket = socket
+        self.conn = conn
 
         self.encoder = parser.Encoder()
         self.decoder = parser.Decoder()
 
-        self.sid = socket.sid
-        # TODO request
+        self.sid = conn.sid
+        self.request = conn.request
 
         self.setup()
 
@@ -32,7 +32,7 @@ class Client(object):
 
     def setup(self):
         """Sets up event listeners."""
-        self.socket.on('data', self.on_data)\
+        self.conn.on('data', self.on_data)\
                    .on('close', self.on_close)
 
         self.decoder.on('decoded', self.on_decoded)
@@ -82,12 +82,12 @@ class Client(object):
 
     def close(self):
         """Closes the underlying connection."""
-        if self.socket.ready_state != 'open':
+        if self.conn.ready_state != 'open':
             return
 
         log.debug('forcing transport close')
 
-        self.socket.close()
+        self.conn.close()
         self.on_close('forced server close')
 
     def packet(self, packet, encoded=False, volatile=False):
@@ -102,17 +102,17 @@ class Client(object):
         :param volatile: Flag indicating the packet is volatile
         :type volatile: bool
         """
-        if self.socket.ready_state != 'open':
+        if self.conn.ready_state != 'open':
             log.debug('ignoring packet write %s, transport not ready', packet)
             return
 
         def write(encoded_packets):
-            if volatile and not self.socket.transport.writable:
+            if volatile and not self.conn.transport.writable:
                 return
 
             # Write each packet to socket
             for ep in encoded_packets:
-                self.socket.write(ep)
+                self.conn.write(ep)
 
         log.debug('writing packet %s', packet)
 
@@ -173,7 +173,7 @@ class Client(object):
         self.decoder.destroy()
 
     def destroy(self):
-        self.socket.off('data')\
+        self.conn.off('data')\
                    .off('close')
 
         self.decoder.off('decoded')

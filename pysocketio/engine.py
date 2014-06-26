@@ -28,8 +28,8 @@ class Engine(Emitter):
         self.adapter(options.get('adapter') or Adapter)
         self.sockets = self.of('/')
 
-        # Set proxy methods to '/' namespace
-        for name in ['on']:
+        # Expose main namespace (/)
+        for name in ['on', 'to', 'use', 'emit', 'send']:
             func = getattr(self.sockets, name)
             setattr(self, name, func)
 
@@ -38,6 +38,11 @@ class Engine(Emitter):
 
         self.eio = pyengineio.Engine(options) \
             .on('connection', self.on_connection)
+
+    @property
+    def json(self):
+        self.sockets.flags['json'] = True
+        return self
 
     def adapter(self, adapter=None):
         """Sets the adapter for rooms.

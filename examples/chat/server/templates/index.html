@@ -61,10 +61,18 @@
         <script>
             var $nmContent = $('#new-message .content'),
                 $nmSend = $('#new-message .send'),
-                socket = io('http://localhost'),
+                socket = io('http://localhost', {
+                    query: 'token=example'
+                }),
                 username = 'one';
 
+            socket.on('error', function(data) {
+                console.log(data);
+            });
+
             socket.on('connect', function(){
+                console.log('connected');
+
                 socket.emit('login', username);
             });
 

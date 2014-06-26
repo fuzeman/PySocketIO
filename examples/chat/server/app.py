@@ -9,6 +9,14 @@ app = Flask(__name__)
 io = Engine()
 
 
+def authorize(socket):
+    if socket.request.query.get('token') != 'example':
+        return "invalid token"
+
+
+io.use(authorize)
+
+
 @app.route('/')
 def index():
     return render_template('index.html')

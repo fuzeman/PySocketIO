@@ -25,27 +25,30 @@ class Namespace(Emitter):
         self.sockets = []
         self.connected = {}
 
+        self.middleware = []
         self.adapter = self.engine.adapter()(self)
 
-        self.emit_rooms = []
-        self.emit_flags = {}
+        self.rooms = []
+        self.flags = {}
 
     @property
-    def broadcast(self):
-        self.emit_flags['broadcast'] = True
-        return self
-
-    @property
-    def volatile(self):
-        self.emit_flags['volatile'] = True
+    def json(self):
+        self.flags['json'] = True
         return self
 
     def use(self, func):
         """Sets up namespace middleware."""
-        pass
+        self.middleware.append(func)
+        return self
 
     def run(self, socket):
         """Executes the middleware for an incoming client."""
+        for func in self.middleware:
+            error = func(socket)
+
+            if error:
+                return error
+
         return None
 
     def to(self, name):
@@ -54,8 +57,8 @@ class Namespace(Emitter):
         :param name: Room name
         :type name: str
         """
-        if name not in self.emit_rooms:
-            self.emit_rooms.append(name)
+        if name not in self.rooms:
+            self.rooms.append(name)
 
         return self
 
@@ -75,12 +78,12 @@ class Namespace(Emitter):
         # Execute middleware
         error = self.run(socket)
 
-        if client.socket.ready_state != 'open':
+        if client.conn.ready_state != 'open':
             log.debug('next called after client was closed - ignoring socket')
             return None
 
-        if error is not None:
-            log.error(error)
+        if error:
+            socket.error(error)
             return None
 
         # track socket
@@ -123,13 +126,13 @@ class Namespace(Emitter):
         # TODO ACK callback check
 
         self.adapter.broadcast(packet, {
-            'rooms': self.emit_rooms,
-            'flags': self.emit_flags
+            'rooms': self.rooms,
+            'flags': self.flags
         })
 
         # Reset options
-        self.emit_rooms = []
-        self.emit_flags = {}
+        self.rooms = []
+        self.flags = {}
 
         return self
 

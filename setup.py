@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='PySocketIO',
-    version='1.0.0-beta',
+    version='1.0.6-beta',
     url='http://github.com/fuzeman/PySocketIO/',
 
     author='Dean Gardiner',

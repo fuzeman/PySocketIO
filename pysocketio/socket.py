@@ -137,7 +137,7 @@ class Socket(Emitter):
         self.adapter.add(self.sid, room, on_added)
         return self
 
-    def leave(self, room, callback):
+    def leave(self, room, callback=None):
         """Leaves a room.
 
         :param room: room name
